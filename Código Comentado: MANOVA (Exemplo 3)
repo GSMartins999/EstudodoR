@@ -1,0 +1,36 @@
+# 1 - Carregando os dados  ------------------------------------------------
+dados <- tratamento
+colnames(dados) <- c("Ensino", "Nota_Matematica", "Nota_Portugues")
+
+# 2 - Verificando a Normalidade das variáveis ----
+# Teste de Shapiro-Wilk para saber se os dados seguem uma curva normal (sino).
+# AVISO CRÍTICO: Sem essas linhas, você não sabe se os dados cumprem o pré-requisito para fazer a MANOVA. 
+# Se p < 0.05 aqui, os dados não são normais, e usar a MANOVA pode gerar resultados matematicamente inválidos.
+shapiro.test(dados$Nota_Matematica) 
+shapiro.test(dados$Nota_Portugues) 
+
+# 3 - Testar se os grupos são iguais para todas as variáveis ----
+# Construção do modelo MANOVA. O 'cbind' une as variáveis dependentes. O '~ Ensino' é a variável que separa os grupos.
+# AVISO CRÍTICO: Sem o comando 'manova', você estaria testando Matemática separada de Português, 
+# ignorando que um aluno bom em exatas pode ter notas correlacionadas.
+modelo <- manova(cbind(Nota_Matematica, Nota_Portugues) ~ Ensino, data=dados)
+
+# Exibe os resultados usando diferentes testes matemáticos (Roy, Wilks, Pillai).
+# Se o p-value mostrado nestes sumários for menor que 0.05, os métodos de ensino geram resultados diferentes.
+summary(modelo, test="Roy")   
+summary(modelo, test="Wilks")  
+summary(modelo) # Padrão é Pillai
+
+# 4 - ANOVA para identificar qual variável contribui mais ----
+# Se a MANOVA deu diferença (p < 0.05), a pergunta passa a ser: "A diferença foi na Matemática, no Português, ou em ambas?"
+# AVISO: Sem o summary.aov, você sabe que houve uma diferença global, mas fica no escuro sobre qual matéria causou o impacto.
+summary.aov(modelo)
+
+# 5 - Ver quais pares de grupos são significativamente diferentes ----
+# Faz a análise isolada para saber como as notas se comportaram em cada disciplina de forma mais aprofundada.
+aov_Matematica <- aov(Nota_Matematica ~ Ensino, data=dados)
+summary(aov_Matematica)
+
+# Calcula a média real das notas de matemática e português para cada método de ensino (A, B e C) 
+# para você poder bater o olho e ver quem teve a nota mais alta.
+aggregate(cbind(Nota_Matematica, Nota_Portugues) ~ Ensino, data = dados, FUN = mean)

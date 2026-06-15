@@ -1,0 +1,56 @@
+# Carrega os dados nativos do R sobre crimes nos EUA
+dados <- USArrests
+
+# Renomeia as colunas para facilitar a leitura.
+colnames(dados) <- c("Homicídio", "Assalto", "População Urbana","Estupro")
+
+# 1 - Padronização dos dados ----------------------------------------------
+# Calcula a média de cada coluna apenas para visualização.
+media <- colMeans(dados)
+
+# AVISO CRÍTICO: Sem essa linha (scale), variáveis com valores absolutos grandes 
+# (como Assalto, que chega a 300) vão dominar o agrupamento e ofuscar variáveis com 
+# valores pequenos (como Homicídio, que é em torno de 10). O resultado será ruim e irreal.
+dados.p <- scale(dados) 
+
+# 2 - Determinando a medida de similaridade -------------------------------
+# Calcula a matriz de distância. O quão "longe" um estado está do outro matematicamente.
+# AVISO: Sem essa linha, não é possível criar a matriz que os algoritmos de cluster precisam para funcionar.
+d.eucl <- dist(dados.p, method = "euclidean") 
+
+# 3. Seleção do algoritmo de agrupamento -------------------------------
+# Testa diferentes métodos para construir a árvore de grupos (Ward, Média, Completa).
+metod.ward <- hclust(d = d.eucl, method = "ward.D2")
+metod.ligMed <- hclust(d.eucl, method = "average")
+metod.complete <- hclust(d.eucl, method = "complete")
+
+# AVISO: Sem essas linhas de correlação (cor), você não tem um critério matemático para 
+# escolher qual método acima é o melhor. Você ficaria "adivinhando". O maior valor aqui é o vencedor.
+cor(d.eucl, cophenetic(metod.ward))
+cor(d.eucl, cophenetic(metod.ligMed))
+cor(d.eucl, cophenetic(metod.complete))
+
+# 4. Definição do número de agrupamentos -------------------------------
+library("factoextra")
+# Plota a árvore visualmente (Dendrograma) usando o método que obteve a melhor correlação.
+fviz_dend(metod.ligMed, cex = 0.5)
+
+library("NbClust")
+# Roda dezenas de testes matemáticos para sugerir qual é o número ideal de grupos (entre 2 e 10).
+# AVISO: Sem essa linha, você teria que escolher o número de grupos apenas "no olho" olhando o gráfico, o que é subjetivo.
+nb <- NbClust(dados.p, distance = "euclidean", min.nc = 2, max.nc = 10, method = "average", index = "all")
+
+# 5. Interpretação e validação dos agrupamentos. ------------------------
+# "Corta" a árvore no número de grupos escolhido (k=2).
+# AVISO: Sem essa linha, você não consegue extrair a lista final dizendo a qual grupo cada estado pertence.
+grupo <- cutree(metod.ligMed, k=2)
+
+# Conta quantos estados caíram em cada grupo.
+table(grupo)
+
+# Exibe os nomes dos estados que estão no grupo 1 e no grupo 2.
+rownames(dados.p)[grupo == 1]
+rownames(dados.p)[grupo == 2]
+
+# Plota o dendrograma final, agora colorido e com retângulos separando os grupos escolhidos.
+fviz_dend(metod.ligMed, k = 2, cex = 0.5, color_labels_by_k = TRUE, rect = TRUE)
